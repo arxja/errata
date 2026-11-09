@@ -2,8 +2,12 @@
   "name": "errata",
   "type": "module",
   "private": true,
+  "scripts": {
+    "generate": "bun evals/generator/index.ts"
+  },
   "dependencies": {
     "@google/genai": "^2.32.0",
+    "@napi-rs/canvas": "^1.1.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
