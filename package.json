@@ -1,0 +1,15 @@
+{
+  "name": "errata",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  }
+}
