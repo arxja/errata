@@ -1,0 +1,250 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #111;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 180px;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px;
+  overflow-y: auto;
+}
+.sidebar h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 12px;
+}
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sidebar button {
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+}
+.sidebar button:hover {
+  background: #f3f4f6;
+}
+.sidebar button.active {
+  background: #e6f0ff;
+  border-color: #93b8f0;
+}
+
+.viewer {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.image-pane {
+  flex: 0 0 42%;
+  background: #f9fafb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+}
+.image-pane img {
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+.form-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #e5e7eb;
+}
+
+.form-header {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  background: #fff;
+}
+.form-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-family: ui-monospace, monospace;
+}
+.form-header .actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.form-header button {
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+.form-header button:hover:not(:disabled) {
+  background: #f9fafb;
+}
+.form-header button.save {
+  background: #2563eb;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.form-header button.save:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.form-header button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.form-header .timer {
+  font-size: 13px;
+  font-weight: 500;
+}
+.form-header .timer.ok {
+  color: #16a34a;
+}
+.form-header .timer.slow {
+  color: #dc2626;
+}
+.form-header .changed {
+  font-size: 12px;
+  color: #6b7280;
+}
+.form-header .error {
+  font-size: 12px;
+  color: #dc2626;
+  width: 100%;
+}
+
+.fields {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.field input,
+.field select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.conf {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.conf.high {
+  background: #dcfce7;
+  color: #166534;
+}
+.conf.low {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.line-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.line-item input:first-child {
+  flex: 2;
+}
+.line-item input:nth-child(2) {
+  flex: 1;
+  max-width: 120px;
+}
+.line-item button {
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+}
+.line-item button:hover {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.add-item {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 1px dashed #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+}
+.add-item:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
