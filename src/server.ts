@@ -1,12 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { extractReceipt } from "./extract";
+import {
+  getCorrection,
+  listCorrections,
+  upsertCorrection,
+} from "./corrections-db";
 
 const PORT = 3000;
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
 
 type Label = { doc_id: string; doc_hash: string };
-type Receipt = ReturnType<typeof JSON.parse>;
 
 const labels: Label[] = (await Bun.file("evals/labels.jsonl").text())
   .trim()
@@ -28,7 +32,8 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function getExtraction(label: Label): Promise<unknown> {
+// Extract (or read raw cache). Only reached when no correction exists.
+async function getRawExtraction(label: Label): Promise<unknown> {
   const cachePath = `evals/raw/${label.doc_hash}.json`;
   if (existsSync(cachePath)) {
     return JSON.parse(readFileSync(cachePath, "utf8"));
@@ -51,56 +56,73 @@ Bun.serve({
       return new Response(null, { headers: cors() });
     }
 
-    // GET /api/docs — list
     if (path === "/api/docs" && req.method === "GET") {
       return json(labels.map((l) => ({ doc_id: l.doc_id })));
     }
 
-    // GET /docs/:id.png — receipt image
+    if (path === "/api/corrections" && req.method === "GET") {
+      return json(listCorrections());
+    }
+
     const pngMatch = path.match(/^\/docs\/(r_\d+)\.png$/);
     if (pngMatch && req.method === "GET") {
       const filePath = `evals/docs/${pngMatch[1]}.png`;
-      if (!existsSync(filePath)) return new Response("Not found", { status: 404, headers: cors() });
+      if (!existsSync(filePath)) {
+        return new Response("Not found", { status: 404, headers: cors() });
+      }
       return new Response(Bun.file(filePath), {
         headers: { ...cors(), "Content-Type": "image/png" },
       });
     }
 
-    // GET /api/docs/:id — extraction
+    // GET /api/docs/:id — correction-first, then raw cache, then extract.
     const docMatch = path.match(/^\/api\/docs\/(r_\d+)$/);
     if (docMatch && req.method === "GET") {
       const label = labels.find((l) => l.doc_id === docMatch[1]);
-      if (!label) return new Response("Not found", { status: 404, headers: cors() });
-      const extraction = await getExtraction(label);
-      return json({ doc_id: label.doc_id, doc_hash: label.doc_hash, extraction });
+      if (!label) {
+        return new Response("Not found", { status: 404, headers: cors() });
+      }
+
+      const correction = getCorrection(label.doc_hash);
+      if (correction) {
+        return json({
+          doc_id: label.doc_id,
+          doc_hash: label.doc_hash,
+          extraction: JSON.parse(correction.corrected_json),
+          original_extraction: JSON.parse(correction.original_json),
+          from_correction: true,
+        });
+      }
+
+      const extraction = await getRawExtraction(label);
+      return json({
+        doc_id: label.doc_id,
+        doc_hash: label.doc_hash,
+        extraction,
+        original_extraction: null,
+        from_correction: false,
+      });
     }
 
     // POST /api/docs/:id/corrections
     const corrMatch = path.match(/^\/api\/docs\/(r_\d+)\/corrections$/);
     if (corrMatch && req.method === "POST") {
       const label = labels.find((l) => l.doc_id === corrMatch[1]);
-      if (!label) return new Response("Not found", { status: 404, headers: cors() });
+      if (!label) {
+        return new Response("Not found", { status: 404, headers: cors() });
+      }
       const body = (await req.json()) as {
         original: unknown;
         corrected: unknown;
         duration_ms: number;
       };
-      await mkdir("data/corrections", { recursive: true });
-      await writeFile(
-        `data/corrections/${label.doc_hash}.json`,
-        JSON.stringify(
-          {
-            doc_id: label.doc_id,
-            doc_hash: label.doc_hash,
-            saved_at: new Date().toISOString(),
-            duration_ms: body.duration_ms,
-            original: body.original,
-            corrected: body.corrected,
-          },
-          null,
-          2
-        )
-      );
+      upsertCorrection({
+        doc_hash: label.doc_hash,
+        doc_id: label.doc_id,
+        original: body.original,
+        corrected: body.corrected,
+        duration_ms: body.duration_ms,
+      });
       return json({ ok: true });
     }
 
