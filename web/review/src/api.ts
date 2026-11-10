@@ -7,6 +7,8 @@ export type DocResponse = {
   doc_id: string;
   doc_hash: string;
   extraction: Receipt;
+  original_extraction: Receipt | null;
+  from_correction: boolean;
 };
 
 export async function listDocs(): Promise<DocMeta[]> {

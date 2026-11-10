@@ -14,9 +14,13 @@ export default function App() {
   const [lastSave, setLastSave] = useState<{ seconds: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startTime = useRef<number>(0);
+  const [fromCorrection, setFromCorrection] = useState(false);
 
   useEffect(() => {
-    api.listDocs().then(setDocs).catch((e) => setError(String(e)));
+    api
+      .listDocs()
+      .then(setDocs)
+      .catch((e) => setError(String(e)));
   }, []);
 
   const loadDoc = async (docId: string) => {
@@ -28,6 +32,7 @@ export default function App() {
       const res = await api.getDoc(docId);
       setOriginal(res.extraction);
       setDraft(clone(res.extraction));
+      setFromCorrection(res.from_correction);
       startTime.current = Date.now();
     } catch (e) {
       setError(String(e));
@@ -44,6 +49,7 @@ export default function App() {
       await api.saveCorrection(currentDoc, original, draft, duration_ms);
       setLastSave({ seconds: duration_ms / 1000 });
       setOriginal(clone(draft));
+      setFromCorrection(true);
       startTime.current = Date.now();
     } catch (e) {
       setError(String(e));
@@ -88,9 +94,20 @@ export default function App() {
 
           <div className="form-pane">
             <header className="form-header">
-              <h2>{currentDoc}</h2>
+              <h2>
+                {currentDoc}
+                {fromCorrection && (
+                  <span className="from-correction">
+                    {" "}
+                    · loaded from correction
+                  </span>
+                )}
+              </h2>
               <div className="actions">
-                <button onClick={onReset} disabled={saving || changedCount === 0}>
+                <button
+                  onClick={onReset}
+                  disabled={saving || changedCount === 0}
+                >
                   Reset
                 </button>
                 <button className="save" onClick={onSave} disabled={saving}>
@@ -116,10 +133,7 @@ export default function App() {
             </header>
 
             <div className="fields">
-              <Field
-                label="Merchant"
-                confidence={draft.merchant_confidence}
-              >
+              <Field label="Merchant" confidence={draft.merchant_confidence}>
                 <input
                   value={draft.merchant ?? ""}
                   onChange={(e) =>
@@ -149,7 +163,10 @@ export default function App() {
                   onChange={(e) =>
                     setDraft({
                       ...draft,
-                      total: e.target.value === "" ? null : parseFloat(e.target.value),
+                      total:
+                        e.target.value === ""
+                          ? null
+                          : parseFloat(e.target.value),
                     })
                   }
                 />
@@ -164,7 +181,9 @@ export default function App() {
                       currency:
                         e.target.value === ""
                           ? null
-                          : (e.target.value as NonNullable<Receipt["currency"]>),
+                          : (e.target.value as NonNullable<
+                              Receipt["currency"]
+                            >),
                     })
                   }
                 >
@@ -187,7 +206,10 @@ export default function App() {
                       placeholder="description"
                       onChange={(e) => {
                         const next = [...draft.line_items];
-                        next[i] = { ...next[i], description: e.target.value || null };
+                        next[i] = {
+                          ...next[i],
+                          description: e.target.value || null,
+                        };
                         setDraft({ ...draft, line_items: next });
                       }}
                     />
@@ -201,7 +223,9 @@ export default function App() {
                         next[i] = {
                           ...next[i],
                           amount:
-                            e.target.value === "" ? null : parseFloat(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : parseFloat(e.target.value),
                         };
                         setDraft({ ...draft, line_items: next });
                       }}
@@ -210,7 +234,9 @@ export default function App() {
                       onClick={() =>
                         setDraft({
                           ...draft,
-                          line_items: draft.line_items.filter((_, j) => j !== i),
+                          line_items: draft.line_items.filter(
+                            (_, j) => j !== i,
+                          ),
                         })
                       }
                       title="Remove"

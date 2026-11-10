@@ -248,3 +248,10 @@ body {
   color: #9ca3af;
   font-size: 14px;
 }
+
+.form-header .from-correction {
+  color: #16a34a;
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 6px;
+}
