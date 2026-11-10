@@ -1,5 +1,7 @@
 packages:
   - "src"
+  - "web/review"
 allowBuilds:
   '@google/genai': false
+  esbuild: false
   protobufjs: false

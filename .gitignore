@@ -37,3 +37,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 data/corrections.db
 evals/docs
 evals/raw/
+data/corrections/

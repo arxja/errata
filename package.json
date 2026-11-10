@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "generate": "bun evals/generator/index.ts",
-    "eval": "bun evals/per-field.ts"
+    "eval": "bun evals/per-field.ts",
+    "server": "bun src/server.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
