@@ -152,6 +152,89 @@ async function main() {
 
   const pad = (s: string, n: number) => s.padEnd(n);
 
+  // === Confidence calibration ===
+  // For each field, bucket predictions by predicted confidence and report
+  // accuracy in each bucket. Blueprint done-when: low-conf fields are wrong
+  // >=60% of the time. On a 0-error set this is vacuous — recorded as such.
+  const confFields: Array<{
+    field: keyof Receipt;
+    confKey: keyof Receipt;
+    cmp: (a: Label, b: Receipt) => boolean;
+  }> = [
+    {
+      field: "merchant",
+      confKey: "merchant_confidence",
+      cmp: (a, b) => eqStr(a.fields.merchant, b.merchant),
+    },
+    {
+      field: "date",
+      confKey: "date_confidence",
+      cmp: (a, b) => eqStr(a.fields.date, b.date),
+    },
+    {
+      field: "total",
+      confKey: "total_confidence",
+      cmp: (a, b) => eqNum(a.fields.total, b.total),
+    },
+    {
+      field: "currency",
+      confKey: "currency_confidence",
+      cmp: (a, b) => eqEnum(a.fields.currency, b.currency),
+    },
+  ];
+
+  console.log("\n=== Confidence calibration ===");
+  console.log(
+    pad("field", 12) +
+      pad("conf", 6) +
+      pad("count", 8) +
+      pad("correct", 10) +
+      "accuracy",
+  );
+
+  const lowStats = { count: 0, wrong: 0 };
+
+  for (const { field, confKey, cmp } of confFields) {
+    const buckets = new Map<string, { count: number; correct: number }>();
+    for (const r of results) {
+      const conf = String((r.pred as any)[confKey]);
+      const ok = cmp(r.label, r.pred);
+      const e = buckets.get(conf) ?? { count: 0, correct: 0 };
+      e.count++;
+      if (ok) e.correct++;
+      buckets.set(conf, e);
+      if (conf === "low") {
+        lowStats.count++;
+        if (!ok) lowStats.wrong++;
+      }
+    }
+    for (const conf of ["high", "low"]) {
+      const e = buckets.get(conf);
+      if (!e) {
+        console.log(
+          pad(field, 12) + pad(conf, 6) + pad("0", 8) + pad("-", 10) + "n/a",
+        );
+        continue;
+      }
+      const acc = ((e.correct / e.count) * 100).toFixed(1) + "%";
+      console.log(
+        pad(field, 12) +
+          pad(conf, 6) +
+          pad(String(e.count), 8) +
+          pad(String(e.correct), 10) +
+          acc,
+      );
+    }
+  }
+
+  const lowWrongRate =
+    lowStats.count === 0
+      ? "n/a (no low-confidence fields)"
+      : ((lowStats.wrong / lowStats.count) * 100).toFixed(1) + "%";
+  console.log(
+    `\nlow-confidence wrong rate: ${lowWrongRate}  (blueprint target: >=60%)`,
+  );
+
   console.log("=== Scalar fields ===");
   console.log(
     pad("field", 12) + pad("correct", 10) + pad("total", 8) + "accuracy",

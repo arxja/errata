@@ -10,6 +10,7 @@ Rules:
 - Total: the final amount the customer pays. Null if unreadable.
 - line_items: one entry per purchased item. Exclude subtotal, discount, tax, and total rows. If unreadable, return an empty array.
 - Amounts are numbers, not strings. No currency symbols in numbers.
+- Confidence: for each field, set "<field>_confidence" to "high" only when the value is clearly visible. Use "low" for inferred values, partially visible text, or guesses. A null value with "high" confidence means you are certain the field is absent.
 `;
 
 const RESPONSE_SCHEMA = zodToGeminiSchema(Receipt);
