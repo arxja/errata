@@ -3,7 +3,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "generate": "bun evals/generator/index.ts"
+    "generate": "bun evals/generator/index.ts",
+    "eval": "bun evals/per-field.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
