@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { extractReceipt } from "./extract";
 import {
   getCorrection,
   listCorrections,
   upsertCorrection,
 } from "./corrections-db";
+import { createHash } from "node:crypto";
 
 const PORT = 3000;
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
@@ -16,6 +17,8 @@ const labels: Label[] = (await Bun.file("evals/labels.jsonl").text())
   .trim()
   .split("\n")
   .map((l) => JSON.parse(l));
+
+await mkdir("evals/raw", { recursive: true });
 
 function cors(): Record<string, string> {
   return {
@@ -39,7 +42,7 @@ async function getRawExtraction(label: Label): Promise<unknown> {
     return JSON.parse(readFileSync(cachePath, "utf8"));
   }
   const png = Buffer.from(
-    await Bun.file(`evals/docs/${label.doc_id}.png`).arrayBuffer()
+    await Bun.file(`evals/docs/${label.doc_id}.png`).arrayBuffer(),
   );
   const extraction = await extractReceipt(png);
   await writeFile(cachePath, JSON.stringify(extraction, null, 2));
@@ -62,6 +65,76 @@ Bun.serve({
 
     if (path === "/api/corrections" && req.method === "GET") {
       return json(listCorrections());
+    }
+
+    // GET /api/health — mobile connectivity check
+    if (path === "/api/health" && req.method === "GET") {
+      return json({ ok: true, time: new Date().toISOString() });
+    }
+
+    // POST /api/extract — accepts any image, returns extraction.
+    //
+    // Cache layers tried in cheapest-first order:
+    //
+    //   L1 — exact byte hash (SHA-256)     [implemented here]
+    //        Catches: literal re-uploads of identical files
+    //        Misses:  any re-encoding (Telegram, WhatsApp, screenshots, re-photo)
+    //        Cost:    ~0ms CPU
+    //
+    //   L2 — perceptual hash (pHash / dHash)   [highest-ROI production addition]
+    //        Catches: same image after compression, resize, minor crop
+    //        Misses:  large perspective or lighting changes
+    //        Cost:    ~10ms CPU, no API call
+    //        Recipe: dHash 8x8 grayscale → 64-bit hash → Hamming distance < 10 = hit
+    //
+    //   L3 — semantic embedding (CLIP-style)   [only at high volume]
+    //        Catches: same receipt re-photographed from a different angle
+    //        Misses:  visually similar but different receipts (threshold-dependent)
+    //        Cost:    ~50-100ms + vector DB
+    //
+    // All three layers write the SAME correction store (data/corrections.db).
+    // Adding a layer = adding an index on the same table, not a new architecture.
+    //
+    // WARN: never lower a threshold to force a hit. A false hit serves the wrong
+    // extraction silently, which is worse than paying for a Gemini call — the user
+    // won't know to correct it, so the error compounds.
+    //
+    // Production cost at 10k receipts/day (rough): L1 only ≈ $19/day,
+    // L1+L2 ≈ $14/day. The pHash function is ~30 lines and pays for itself day one.
+    if (path === "/api/extract" && req.method === "POST") {
+      const body = (await req.json()) as { image_base64: string };
+      if (!body.image_base64) {
+        return json({ error: "image_base64 required" }, 400);
+      }
+
+      const buffer = Buffer.from(body.image_base64, "base64");
+      const hash = createHash("sha256").update(buffer).digest("hex");
+
+      const correction = getCorrection(hash);
+      if (correction) {
+        return json({
+          doc_hash: hash,
+          extraction: JSON.parse(correction.corrected_json),
+          from_correction: true,
+        });
+      }
+
+      const cachePath = `evals/raw/${hash}.json`;
+      if (existsSync(cachePath)) {
+        return json({
+          doc_hash: hash,
+          extraction: JSON.parse(readFileSync(cachePath, "utf8")),
+          from_correction: false,
+        });
+      }
+
+      const extraction = await extractReceipt(buffer);
+      await writeFile(cachePath, JSON.stringify(extraction, null, 2));
+      return json({
+        doc_hash: hash,
+        extraction,
+        from_correction: false,
+      });
     }
 
     const pngMatch = path.match(/^\/docs\/(r_\d+)\.png$/);
