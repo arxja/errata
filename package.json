@@ -5,7 +5,9 @@
   "scripts": {
     "generate": "bun evals/generator/index.ts",
     "eval": "bun evals/per-field.ts",
-    "server": "bun src/server.ts"
+    "server": "bun src/server.ts",
+    "regression": "bun evals/regression.ts",
+    "evals": "bun evals/per-field.ts && bun evals/regression.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
